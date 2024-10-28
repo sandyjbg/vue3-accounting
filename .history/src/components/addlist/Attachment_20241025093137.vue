@@ -1,0 +1,89 @@
+<template>
+  <div class="mask">
+    <div class="background">
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, watch } from 'vue';
+import { LocationOnRound, CloseFilled } from '@vicons/material'
+
+
+const props = defineProps({
+  closeAddressInput: {
+    type: Function,
+    required: true
+  }
+})
+
+</script>
+
+<style scoped lang="scss">
+.mask {
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.336);
+  top: 100px;
+  right: 710px;
+  height: calc(100% - 100px);
+  width: 500px;
+
+  .background {
+    position: absolute;
+    background-color: white;
+    height: 285px;
+    width: 400px;
+    border-radius: 3px;
+    top: 190px;
+    right: 45px;
+    padding: 20px;
+
+    .top {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      padding-bottom: 15px;
+
+      .inputWrap {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+
+        .n-icon {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          color: rgb(255, 103, 103);
+          font-size: 25px;
+        }
+
+        .input {
+          width: 200px;
+          height: 30px;
+          border-radius: 3px;
+          border: 1px gray solid;
+          padding: 0 10px;
+          outline: none;
+        }
+
+        >p {
+          color: white;
+          height: 30px;
+          padding: 0 10px;
+          display: flex;
+          align-items: center;
+          border-radius: 3px;
+          background-color: rgb(255, 103, 103);
+          margin-left: 10px;
+          cursor: pointer;
+        }
+      }
+
+      .n-icon {
+        font-size: 20px;
+        cursor: pointer;
+      }
+    }
+  }
+}
+</style>
