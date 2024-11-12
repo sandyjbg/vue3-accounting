@@ -43,7 +43,7 @@ const initPieChart = async (id: string) => {
     if (array[item.category]) {
       array[item.category].amount += Number(item.amount)
     } else {
-      array[item.category] = { category: item.category, amount: Number(item.amount) , color:item.color }
+      array[item.category] = { category: item.category, amount: Number(item.amount), color: item.color }
     }
     return array
   }, {})
@@ -53,7 +53,7 @@ const initPieChart = async (id: string) => {
     value: Number(item.amount)
   }))
 
-  const color = Object.values(result).map((item:any) => (item.color))
+  const color = Object.values(result).map((item: any) => (item.color))
 
   let option = {
     tooltip: {
@@ -97,6 +97,10 @@ const initPieChart = async (id: string) => {
 
 onMounted(() => {
   initPieChart('category')
+  const savedData = localStorage.getItem('accountingDataList');
+  if (savedData) {
+    accountingStore.accountingData = JSON.parse(savedData);
+  }
   lists.value = accountingStore.accountingData || []
 })
 </script>

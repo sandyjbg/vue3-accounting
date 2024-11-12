@@ -4,7 +4,8 @@
       <div class="top">
         <div class="inputWrap">
           <n-icon :component="LocationOnRound" />
-          <input class="input" type="text" v-model="address" placeholder="請输入地址或地點名稱" @keydown.enter="locatePlace" />
+          <n-input class="input" type="text" v-model:value="address" placeholder="請输入地址或地點名稱"
+            @keydown.enter="locatePlace" />
           <p @click="addressConfirm()">確定</p>
         </div>
         <n-icon :component="CloseFilled" @click="closeAddressInput()" />
@@ -20,7 +21,6 @@
 import { ref, watch } from 'vue';
 import { LocationOnRound, CloseFilled } from '@vicons/material'
 
-const address = ref('');
 const center = ref({ lat: 25.033964, lng: 121.564468 }); // 默认中心点 (台北101)
 const zoom = ref(15);
 
@@ -38,17 +38,26 @@ const locatePlace = () => {
     }
   });
 };
+
 const props = defineProps({
   closeAddressInput: {
     type: Function,
     required: true
+  },
+  initialData: {
+    type: String,
+    required: false
   }
 })
+
+console.log(props.initialData)
+const address = ref(props.initialData || '');
 
 const emit = defineEmits(['commitAddress'])
 
 function addressConfirm() {
   emit('commitAddress', address.value)
+  props.closeAddressInput()
 }
 </script>
 
@@ -90,13 +99,14 @@ function addressConfirm() {
           font-size: 25px;
         }
 
-        .input {
+        .n-input {
           width: 200px;
-          height: 30px;
-          border-radius: 3px;
-          border: 1px gray solid;
-          padding: 0 10px;
-          outline: none;
+          --n-caret-color: black !important;
+          --n-border: 1px solid #ccc !important;
+          --n-border-hover: 1px solid #ccc !important;
+          --n-border-focus: 1px solid #ccc !important;
+          --n-box-shadow-focus: 0 0 0 2px transparent !important;
+          --n-height: 30px !important;
         }
 
         >p {

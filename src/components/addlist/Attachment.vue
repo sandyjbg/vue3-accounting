@@ -15,7 +15,7 @@
       <div class="img">
         <img v-if="imageUrl" :src="imageUrl" alt="Image Preview" style="max-width: 300px;" />
       </div>
-      <p class="upLoad">上傳</p>
+      <p class="upLoad" @click="uploadFile">上傳</p>
     </div>
   </div>
 </template>
@@ -23,10 +23,24 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { CloseFilled } from '@vicons/material'
+import { useMessage } from 'naive-ui'
+import { useAccountingStore } from '@/stores/accountingStore';
 
-
+const accountingStore = useAccountingStore();
+const message = useMessage()
 const fileData = ref<File | null>(null);
 const imageUrl = ref<string | null>(null);
+
+const props = defineProps({
+  closeAttachmentModel: {
+    type: Function,
+    required: true
+  },
+  recordId: {
+    type: Number,
+    required: true
+  }
+})
 
 const onFileChange = (event: Event) => {
   const input = event.target as HTMLInputElement;
@@ -44,12 +58,17 @@ const onFileChange = (event: Event) => {
   }
 };
 
-const props = defineProps({
-  closeAttachmentModel: {
-    type: Function,
-    required: true
+const emits = defineEmits(['fileSelected'])
+
+const uploadFile = () => {
+  if (fileData.value) {
+    emits('fileSelected', { file: fileData.value, imageUrl: imageUrl.value })
+    console.log(fileData.value)
+    props.closeAttachmentModel()
+  } else {
+    message.warning('請選擇一個文件')
   }
-})
+}
 
 </script>
 

@@ -30,6 +30,8 @@
             <div class="description">
               <n-input v-model:value="description" type="text" :placeholder="moneyMoreOrLest ? '請輸入收入描述' : '請輸入支出描述'" />
             </div>
+            <n-icon @click="showCustomizeList = true" :component="EditNoteFilled" size="40"
+              :style="{ cursor: 'pointer' }" />
           </div>
           <div class="account">
             <div class="paymentList">
@@ -37,11 +39,15 @@
                 @select="paymentHandleSelect">
                 <n-button><n-icon :component="MoneyOutlined" />{{ realPayment }}</n-button>
               </n-dropdown>
+              <p @click="showLabelInput = true"><n-icon :component="LabelSharp" />標籤</p>
               <p @click="showAddressInput = true" :class="address ? 'selected' : ''"><n-icon
                   :component="LocationOnRound" />地址</p>
-              <p @click="showReimburse = true"><n-icon :component="ReceiptFilled" />報銷</p>
-              <p @click="showLenting = true"><n-icon :component="FrontHandRound" />借用</p>
-              <p @click="showAttachment = true"><n-icon :component="AttachmentFilled" />附件</p>
+              <p @click="openReimburse" :class="reimburse.person === '' ? '' : 'selected'"><n-icon
+                  :component="ReceiptFilled" />報銷</p>
+              <p @click="openLenting" :class="lenting.person === '' ? '' : 'selected'"><n-icon
+                  :component="FrontHandRound" />借用</p>
+              <p @click="showAttachment = true" :class="attachment.length > 0 ? 'selected' : ''"><n-icon
+                  :component="AttachmentFilled" />附件</p>
             </div>
           </div>
           <div class="screen">
@@ -83,6 +89,9 @@
     </div>
     <n-dropdown :show="showDropdown" :options="options" @select="handleSelect" :x="menuPosition.x" :y="menuPosition.y"
       :theme-overrides="dropdownThemeOverrides"></n-dropdown>
+    <!-- 自定義詳情 -->
+    <CustomizeList v-if="showCustomizeList" :closeCustomizeModal="closeCustomizeModal"
+      @commitMoreDetail="addMoreDetail" />
     <!-- 加分類彈窗 -->
     <AddCategory v-if="showAddCategory" :isEditMode="isEditMode" :categoryData="editCategoryData"
       :moneyMoreOrLest="moneyMoreOrLest" :close="closeAddCategoryModal" @commitCategory="AddCategoryList"
@@ -94,13 +103,21 @@
     <MergePaymentAmount v-if="showMergePaymentAmount" :closeMergeAmountModel="closeMergeAmountModel"
       :paymentList="selectedOptions" @commitMergeAmount="AddMergeAmount" />
     <!-- 輸入地址彈窗 -->
-    <AddressInput v-if="showAddressInput" :closeAddressInput="closeAddressInput" @commitAddress="addAddress" />
+    <AddressInput v-if="showAddressInput" :closeAddressInput="closeAddressInput" @commitAddress="addAddress"
+      :initialData="address" />
     <!-- 報銷詳情彈窗 -->
-    <Reimburse v-if="showReimburse" :closeReimburseModel="closeReimburseModel" />
+    <Reimburse v-if="showReimburse" :closeReimburseModel="closeReimburseModel" @commitReimburse="addReimburse"
+      :paymentList="paymentOption" :initialData="reimburse" :reimburseAmount="Number(screenValue)" />
     <!-- 借貸金額彈窗 -->
-    <Lent v-if="showLenting" :closeLentModel="closeLentModel" />
+    <LentOther v-if="showLentingOther" :closeLentModel="closeLentOtherModel" @commitLent="addLenting"
+      :paymentList="paymentOption" :initialData="lenting" :lentAmount="Number(screenValue)" />
+    <LentMyself v-if="showLentingMyself" :closeLentModel="closeLentMyselfModel" @commitLent="addLenting"
+      :paymentList="paymentOption" :initialData="lenting" :lentAmount="Number(screenValue)" />
     <!-- 附件彈窗 -->
-    <Attachment v-if="showAttachment" :closeAttachmentModel="closeAttachmentModel" />
+    <Attachment v-if="showAttachment" :closeAttachmentModel="closeAttachmentModel" @fileSelected="commitAttachment"
+      :recordId="selectedRecordId" />
+    <LabelInput v-if="showLabelInput" :closeLabelInput="closeLabelInput" @commitLabels="commitLabels"
+      :initialData="label" />
 
   </n-message-provider>
 </template>
@@ -133,29 +150,34 @@ import {
   CleanHandsSharp,
   ArrowBackIosRound,
   DensityMediumTwotone,
-  InfoFilled,
   MoneyOutlined,
   LocationOnRound,
   ReceiptFilled,
   AttachmentFilled,
-  FrontHandRound
+  FrontHandRound,
+  EditNoteFilled,
+  LabelSharp
 } from '@vicons/material'
-import AddCategory from './../components/AddCategory.vue'
-import MergePayment from '../components/addlist/MergePayment.vue'
+import AddCategory from '../components/addlist/AddCategory.vue'
 import MergePaymentAmount from '../components/addlist/MergePaymentAmount.vue'
 import AddressInput from '../components/addlist/AddressInput.vue'
 import PaymentChoose from '../components/addlist/PaymentChoose.vue'
 import Reimburse from '../components/addlist/Reimburse.vue'
-import Lent from '../components/addlist/Lent.vue'
+import LentOther from '../components/addlist/LentOther.vue'
+import LentMyself from '../components/addlist/LentMyself.vue'
 import Attachment from '../components/addlist/Attachment.vue'
+import CustomizeList from '../components/addlist/CustomizeList.vue'
+import LabelInput from '../components/addlist/LabelInput.vue'
 import { useAccountingStore } from '@/stores/accountingStore'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useMessage } from 'naive-ui';
 
 const message = useMessage()
+const route = useRoute()
 const router = useRouter()
 const accountingStore = useAccountingStore()
-// 日期選擇器h-full 
+
+// 日期選擇器
 const timestamp = ref(Date.now())
 
 // 彈窗開關
@@ -165,8 +187,11 @@ const showAddressInput = ref(false)
 const showPaymentChoose = ref(false)
 const showMergePaymentAmount = ref(false)
 const showReimburse = ref(false)
-const showLenting = ref(false)
+const showLentingOther = ref(false)
+const showLentingMyself = ref(false)
 const showAttachment = ref(false)
+const showCustomizeList = ref(false)
+const showLabelInput = ref(false)
 
 // 計算機
 const screenValue = ref('0')
@@ -174,6 +199,7 @@ const operatorValue = ref('0')
 const symbol = ref<string | null>(null)
 const coverOldNum = ref(false)
 
+const selectedRecordId = ref(1)
 const categoryName = ref('早餐')
 const categoryIcon = ref<Component>(FreeBreakfastRound)
 const categoryColor = ref('#dc6980')
@@ -183,22 +209,46 @@ const isEditMode = ref(false)
 const menuPosition = ref({ x: 0, y: 0 })
 const existingCategory = ref({ id: -1, name: '', color: '', icon: FreeBreakfastRound })
 const editCategoryData = ref({ id: -1, name: '', color: '', icon: null })
-
+const moreDetail = ref<{ [key: string]: string }[]>([])
+const moreDetailTextArea = ref('')
+const address = ref('')
+const reimburse = ref({
+  person: '',
+  contact: '',
+  detail: '',
+  amount: null,
+  account: '',
+  reimburseOrNot: false,
+  doneDate: Date.now(),
+  deadLine: Date.now(),
+  reimburseAll: '全部報銷'
+})
+const lenting = ref({
+  type: true,
+  person: '',
+  contact: '',
+  detail: '',
+  amount: null,
+  account: '',
+  payOrNot: false,
+  doneDate: Date.now(),
+  deadLine: Date.now(),
+  lentAll: '全部借款'
+})
 // 已有的所有支付方式
 const paymentOption = ref([
-  { label: '現金', key: '現金' },
-  { label: '信用卡', key: '信用卡' },
-  { label: '金融卡', key: '金融卡' },
-  { label: '悠遊卡', key: '悠遊卡' },
   { label: '混合支付（兩種支付方式）', key: '混合' }
 ])
+const attachment = ref({})
+const label = ref<string[]>([])
 // 選擇的支付方式
 const selectedOptions = ref<string[]>([])
 // 混合支付金額設定
 const inputValues = ref({})
 const realPayment = ref(paymentOption.value[0].key)
 const gotPayment = ref(false)
-const address = ref('')
+const lists = ref<any[]>([])
+const largePayment = ref<any[]>([])
 
 const options = [
   {
@@ -226,8 +276,11 @@ function closeAddressInput() {
 function closeReimburseModel() {
   showReimburse.value = false
 }
-function closeLentModel() {
-  showLenting.value = false
+function closeLentMyselfModel() {
+  showLentingMyself.value = false
+}
+function closeLentOtherModel() {
+  showLentingOther.value = false
 }
 function closeAttachmentModel() {
   showAttachment.value = false
@@ -237,6 +290,12 @@ function closeMergeAmountModel() {
 }
 function openMergeAmountModal() {
   showMergePaymentAmount.value = true
+}
+function closeCustomizeModal() {
+  showCustomizeList.value = false
+}
+function closeLabelInput() {
+  showLabelInput.value = false
 }
 
 // 選擇種類和下方輸入同步
@@ -269,18 +328,70 @@ function paymentHandleSelect(value: any) {
   }
 }
 
+function openReimburse() {
+  if (lenting.value.person !== '') {
+    message.warning('你不能同時報銷又借錢，我說不行就不行')
+    return
+  }
+  showReimburse.value = true
+}
+
+function openLenting() {
+  if (reimburse.value.person !== '') {
+    message.warning('你不能同時報銷又借錢，我說不行就不行')
+    return
+  }
+  if (moneyMoreOrLest.value) {
+    showLentingMyself.value = true
+  } else {
+    showLentingOther.value = true
+  }
+}
+
+// ------------------------ 【子傳父】 -----------------------------
+// 傳入選了哪兩個付款方式
 function AddMergePayment(list: any) {
   showPaymentChoose.value = false
   selectedOptions.value = list
 }
 
+// 傳入兩種付款方式分別是多少錢
 function AddMergeAmount(object: any) {
   showMergePaymentAmount.value = false
   inputValues.value = object
 }
 
+// 傳入自定義詳情
+function addMoreDetail(detail: any) {
+  showCustomizeList.value = false
+  moreDetail.value = detail[0]
+  moreDetailTextArea.value = detail[1]
+}
+
+// 傳入地址
 function addAddress(add: string) {
   address.value = add
+}
+
+// 傳入報銷詳情
+function addReimburse(info: any) {
+  reimburse.value = info
+  console.log(reimburse.value)
+}
+
+// 傳入欠款詳情
+function addLenting(info: any) {
+  lenting.value = info
+}
+
+// 傳入附件
+function commitAttachment(data: any) {
+  attachment.value = data
+}
+
+// 傳入標籤
+function commitLabels(data: any) {
+  label.value = data
 }
 
 // ------------------------ 計算機區域 -----------------------------
@@ -322,7 +433,49 @@ function operator(sym: string) {
 function equal() {
   if (symbol.value === null) return
 
-  nextTick(() => {
+  const b = Number(screenValue.value)
+  const a = Number(operatorValue.value)
+
+  console.log(screenValue.value, operatorValue.value)
+
+  switch (symbol.value) {
+    case 'divide':
+      screenValue.value = (a / b).toString()
+      break
+    case 'multiply':
+      screenValue.value = (a * b).toString()
+      break
+    case 'plus':
+      screenValue.value = (a + b).toString()
+      break
+    case 'minus':
+      screenValue.value = (a - b).toString()
+      break
+  }
+  symbol.value = null
+  coverOldNum.value = true
+}
+
+// 將時間戳轉換為年月日
+const processingDate = (num: number) => {
+  const date = new Date(num)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}年${month}月${day}日`
+}
+
+// 將時間戳轉換為時間
+const processingTime = (num: number) => {
+  const date = new Date(num)
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const seconds = String(date.getSeconds()).padStart(2, '0')
+  return `${hours} : ${minutes}`
+}
+
+function commit() {
+  if (coverOldNum.value === false && symbol.value) {
     const b = Number(screenValue.value)
     const a = Number(operatorValue.value)
 
@@ -342,63 +495,67 @@ function equal() {
     }
     symbol.value = null
     coverOldNum.value = true
-  })
-}
-
-function commit() {
-  if (coverOldNum.value === false && symbol.value) {
-    nextTick(() => {
-      const b = Number(screenValue.value)
-      const a = Number(operatorValue.value)
-
-      switch (symbol.value) {
-        case 'divide':
-          screenValue.value = (a / b).toString()
-          break
-        case 'multiply':
-          screenValue.value = (a * b).toString()
-          break
-        case 'plus':
-          screenValue.value = (a + b).toString()
-          break
-        case 'minus':
-          screenValue.value = (a - b).toString()
-          break
-      }
-      symbol.value = null
-      coverOldNum.value = true
-    })
   }
 
-  // 時間轉格式
-  const date = new Date(timestamp.value)
-  // 年月日
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  // 時分秒
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  const seconds = String(date.getSeconds()).padStart(2, '0')
+  if (route.query.mode !== 'edit') {
+    // 如果是新增的話
+    selectedRecordId.value = accountingStore.accountingData.length + 1
 
-  const dataToSubmit = {
-    icon: categoryIcon.value,
-    category: categoryName.value,
-    description: description.value,
-    amount: screenValue.value,
-    date: `${year}年${month}月${day}日`,
-    time: `${hours} : ${minutes}`,
-    timeStamp: new Date(timestamp.value).toISOString(),
-    color: categoryColor.value,
-    type: moneyMoreOrLest.value ? '收入' : '支出',
-    payment: gotPayment.value ? selectedOptions.value : ['現金'],
-    mixPayment: selectedOptions.value.length === 2 ? { ...inputValues.value } : null,
-    address: address.value
+    const dataToSubmit = {
+      id: selectedRecordId.value,
+      icon: categoryIcon.value,
+      category: categoryName.value,
+      description: description.value,
+      amount: screenValue.value,
+      date: processingDate(timestamp.value),
+      time: processingTime(timestamp.value),
+      timeStamp: new Date(timestamp.value).toISOString(),
+      color: categoryColor.value,
+      type: moneyMoreOrLest.value ? '收入' : '支出',
+      payment: gotPayment.value ? selectedOptions.value : ['現金'],
+      mixPayment: selectedOptions.value.length === 2 ? { ...inputValues.value } : null,
+      informationList: moreDetail.value,
+      address: address.value,
+      information: moreDetailTextArea.value,
+      reimburse: reimburse.value,
+      lent: lenting.value,
+      attachment: attachment.value,
+      label: label.value
+    }
+
+    accountingStore.setAccountingData(dataToSubmit)
+    localStorage.setItem('accountingDataList', JSON.stringify(accountingStore.accountingData));
+    router.push('/')
+    console.log(dataToSubmit)
+  } else {
+    // 如果是修改的話
+    const dataId = Number(route.query.dataId)
+
+    const updatedData = {
+      id: selectedRecordId.value,
+      icon: categoryIcon.value,
+      category: categoryName.value,
+      description: description.value,
+      amount: screenValue.value,
+      date: processingDate(timestamp.value),
+      time: processingTime(timestamp.value),
+      timeStamp: new Date(timestamp.value).toISOString(),
+      color: categoryColor.value,
+      type: moneyMoreOrLest.value ? '收入' : '支出',
+      payment: gotPayment.value ? selectedOptions.value : ['現金'],
+      mixPayment: selectedOptions.value.length === 2 ? { ...inputValues.value } : null,
+      informationList: moreDetail.value,
+      address: address.value,
+      information: moreDetailTextArea.value,
+      reimburse: reimburse.value,
+      lent: lenting.value,
+      attachment: attachment.value
+    }
+
+    accountingStore.updateAccountingData(dataId, updatedData)
+    localStorage.setItem('accountingListData', JSON.stringify(accountingStore.accountingData));
+    router.push('/')
   }
-
-  accountingStore.setAccountingData(dataToSubmit)
-  router.push('/')
-  console.log(dataToSubmit)
 }
 //------------------------------------------------------------------
 
@@ -406,12 +563,51 @@ function commit() {
 const dropdownThemeOverrides = {
 }
 
+watch(showReimburse, (newVal) => {
+  console.log(newVal);
+});
+
 // 下拉框點擊其他地方會收起
 function handleGlobalClick(event: MouseEvent) {
   showDropdown.value = false
 }
+
 onMounted(() => {
   document.addEventListener('click', handleGlobalClick)
+  const savedData = localStorage.getItem('paymentDataList');
+  if (savedData) {
+    accountingStore.paymentData = JSON.parse(savedData);
+  }
+  largePayment.value = accountingStore.paymentData || []
+  lists.value = accountingStore.accountingData || [];
+
+  for (let i = 0; i < largePayment.value.length; i++) {
+    paymentOption.value.push({ label: largePayment.value[i].paymentName, key: largePayment.value[i].paymentName })
+  }
+
+  if (route.query.mode === 'edit') {
+    const dataId = Number(route.query.dataId)
+    const thisOne = lists.value.find((item: any) => item.id === dataId)
+    if (thisOne) {
+      screenValue.value = thisOne.amount
+      categoryName.value = thisOne.category
+      categoryIcon.value = thisOne.icon
+      categoryColor.value = thisOne.color
+      description.value = thisOne.description
+      moneyMoreOrLest.value = thisOne.type === '收入' ? true : false
+      moreDetail.value = thisOne.informationList
+      moreDetailTextArea.value = thisOne.information
+      address.value = thisOne.address
+      reimburse.value = thisOne.reimburse
+      lenting.value = thisOne.lent
+      selectedOptions.value = thisOne.payment
+      timestamp.value = thisOne.timeStamp
+      inputValues.value = thisOne.mixPayment
+      attachment.value = thisOne.attachment
+    }
+    console.log(route.query.mode)
+    console.log(thisOne)
+  }
 })
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleGlobalClick)
@@ -552,7 +748,7 @@ const categories = ref<Category[]>([
     id: 10,
     icon: LocalGroceryStoreTwotone,
     color: '#23c9b5',
-    name: '日用品',
+    name: '借錢',
     type: '支出'
   },
   {

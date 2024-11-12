@@ -148,6 +148,10 @@ const calculateOutput = (year: number, month: number, date: number) => {
 }
 
 onMounted(() => {
+  const savedData = localStorage.getItem('accountingDataList');
+  if (savedData) {
+    accountingStore.accountingData = JSON.parse(savedData);
+  }
   lists.value = accountingStore.accountingData || []
 
   const today = new Date()
@@ -310,7 +314,7 @@ onMounted(() => {
           >p {
             width: 50px;
             text-align: center;
-            font-weight:bolder;
+            font-weight: bolder;
 
             &.active {
               border-bottom: 2px rgb(255, 103, 103) solid;

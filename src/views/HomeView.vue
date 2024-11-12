@@ -1,100 +1,212 @@
 <template>
   <n-message-provider>
-    <div class="box">
-      <div class="background">
-        <div class="topic">
-          <div class="nameWithLogo">
-            <div class="space">
-              <div><n-icon :component="DensityMediumTwotone" /></div>
+    <n-dialog-provider>
+      <div class="box">
+        <div class="background">
+          <!-- 大logo部分 -->
+          <div class="topic">
+            <div class="nameWithLogo">
+              <div class="space">
+                <div><n-icon :component="DensityMediumTwotone" /></div>
+              </div>
+              <img src="../assets/building.png" />
+              <div class="name">沙雕記賬</div>
             </div>
-            <img src="../assets/building.png" />
-            <div class="name">沙雕記賬</div>
-          </div>
-          <div class="monthTotalwithArrow">
-            <div><n-icon :component="ArrowLeftRound" /></div>
-            <div class="monthTotal">
-              <n-date-picker v-model:value="timestamp" type="month" clearable />
-              <div class="input">
-                <p>收入</p>
-                <p>{{ monthlyTotalInput }}</p>
-              </div>
-              <div class="output">
-                <p>支出</p>
-                <p>{{ monthlyTotalOutput }}</p>
-              </div>
-            </div>
-            <div><n-icon :component="ArrowRightRound" /></div>
-          </div>
-        </div>
-        <div class="content" v-if="lists.length > 0">
-          <div class="dayDetail" v-for="(items, date) in sortListbyTime">
-            <div class="dayTotal">
-              <div class="date">
-                <p>{{ date.replace('2024年', '') }}</p>
-                <p>{{ getDayOfWeek(date) }}</p>
-              </div>
-              <div class="smallTotal">
-                <div class="smallDailyTotal">
-                  <p>日增減</p>
-                  <p>{{ dailyTotalAmount(items.income, items.expense) }} 元</p>
-                </div>
-                <div class="smallInput">
+
+            <!-- 月總支出 -->
+            <div class="monthTotalwithArrow">
+              <div><n-icon :component="ArrowLeftRound" /></div>
+              <div class="monthTotal">
+                <n-date-picker v-model:value="timestamp" type="month" clearable />
+                <div class="input">
                   <p>收入</p>
-                  <p>{{ dailyTotalInput(items.income) }} 元</p>
+                  <p>{{ monthlyTotalInput }}</p>
                 </div>
-                <div class="smallOutput">
+                <div class="output">
                   <p>支出</p>
-                  <p>{{ dailyTotalOutput(items.expense) }} 元</p>
+                  <p>{{ monthlyTotalOutput }}</p>
                 </div>
               </div>
+              <div><n-icon :component="ArrowRightRound" /></div>
             </div>
-            <div class="dayList">
-              <div class="biggerEachList" v-for="(list, index) in [...items.income, ...items.expense]">
-                <div
-                  :class="['eachList', { more: !moreFunction, input: list.type === '收入', output: list.type !== '收入' }]">
-                  <div class="project">
-                    <n-checkbox v-if="list.merging" :value="index" />
-                    <n-icon :component="list.icon"
-                      :style="{ backgroundColor: list.color, marginLeft: (list.merging === false && mergeStart === true) ? '23px' : '' }" />
-                    <p>{{ list.category }}</p>
-                    <p v-if="list.description">-- {{ list.description }}</p>
+          </div>
+
+          <!-- 內容部分 -->
+          <div class="content" v-if="lists.length > 0">
+            <div class="dayDetail" v-for="(items, date) in sortListbyTime">
+
+              <!-- 日期 和 日增減 -->
+              <div class="dayTotal">
+                <div class="date">
+                  <p>{{ date.replace('2024年', '') }}</p>
+                  <p>{{ getDayOfWeek(date) }}</p>
+                </div>
+                <div class="smallTotal">
+                  <div class="smallDailyTotal">
+                    <p>日增減</p>
+                    <p>{{ dailyTotalAmount(items.income, items.expense) }} 元</p>
                   </div>
-                  <div class="number" v-if="list.moreFunction">
-                    <div class="payment">
-                      <p v-for="pay in list.payment">{{ pay }}</p>
-                    </div>
-                    <p class="num">{{ list.type === '收入' ? '+' : '-' }}{{ Number(list.amount) }}</p>
+                  <div class="smallInput">
+                    <p>收入</p>
+                    <p>{{ dailyTotalInput(items.income) }} 元</p>
+                  </div>
+                  <div class="smallOutput">
+                    <p>支出</p>
+                    <p>{{ dailyTotalOutput(items.expense) }} 元</p>
                   </div>
                 </div>
-                <div @click="toggleMoreFunction(index)" v-if="list.moreFunction" class="moreBtn"></div>
-                <div v-else class="list">
-                  <n-icon class="back" :component="ArrowForwardIosFilled" @click="closeAllFunction(index)" />
-                  <n-icon class="function" :component="RemoveRedEyeRound" @click="router.push('/ListDetail')"/>
-                  <n-icon class="function" :component="MergeFilled" @click="listsMerge(index)" />
-                  <n-icon class="function" :component="ContentCopyFilled" @click="listsCopy(index)" />
-                  <n-icon class="function" :component="DeleteFilled" @click="listsDelete(index)" />
+              </div>
+              <div class="dayList">
+
+                <!-- 收入支出條列 -->
+                <div class="biggerEachList" v-for="(list, index) in [...items.income, ...items.expense]">
+                  <div :class="['eachList', {
+                    more: !moreFunction, input: list.type === '收入', output: list.type !== '收入',
+                  }]">
+                    <div class="project">
+                      <n-checkbox v-if="list.merging" :value="index" />
+
+                      <!-- icon和分類 -->
+                      <n-icon :component="list.icon"
+                        :style="{ backgroundColor: list.color, marginLeft: (list.merging === false && mergeStart === true) ? '23px' : '' }" />
+                      <p>{{ list.category }}</p>
+
+                      <!-- 描述 -->
+                      <p v-if="list.description"><span>-- </span>{{ list.description }}</p>
+                    </div>
+
+                    <!-- 更多功能留的背景框 -->
+                    <div class="number" v-if="list.moreFunction">
+
+                      <!-- 小圖標 -->
+                      <div class="payment">
+
+                        <!-- 標籤 -->
+                        <n-popover trigger="hover" raw :show-arrow="false">
+                          <template #trigger>
+                            <div class="icon-container" v-if="list.label.length > 0">
+                              <n-icon class="label" :component="LabelSharp" color="#ffa743" />
+                            </div>
+                            <span v-else></span>
+                          </template>
+                          <div :style="{
+                            width: 'auto', height: 'auto', backgroundColor: '#ffa743', padding: '10px', borderRadius: '3px',
+                            color: 'white'
+                          }">
+                            <span v-html="list.label">
+                            </span>
+                          </div>
+                        </n-popover>
+
+                        <!-- 附件 -->
+                        <n-icon v-if="list.attachment.length > 0" class="attachment" :component="AttachmentFilled" />
+
+                        <!-- 報銷 -->
+                        <n-popover trigger="hover" raw :show-arrow="false">
+                          <template #trigger>
+                            <div class="icon-container" v-if="list.reimburse.person !== ''">
+                              <p :class="['else', list.reimburse.reimburseOrNot ? 'done' : 'reimburse']">
+                                銷</p>
+                            </div>
+                            <span v-else></span>
+                          </template>
+                          <div :style="{
+                            width: '158px', height: '65px', backgroundColor: list.reimburse.reimburseOrNot ? 'rgb(168, 168, 168)' : 'rgb(0, 138, 202)', padding: '10px', borderRadius: '3px',
+                            color: 'white'
+                          }">
+                            <span
+                              v-html="list.reimburse?.reimburseOrNot ?
+                                `已報銷<br />${list.reimburse.doneDateProcess}報銷完成` : `未報銷<br />${list.reimburse.deadLineProcess}前完成報銷`">
+                            </span>
+                          </div>
+                        </n-popover>
+
+                        <!-- 借款 -->
+                        <n-popover trigger="hover" raw :show-arrow="false">
+                          <template #trigger>
+                            <div class="icon-container" v-if="list.lent.type && Boolean(list.lent.person)">
+                              <p :class="['else', list.lent.payOrNot ? 'done' : 'lentIn']">
+                                借</p>
+                            </div>
+                            <span v-else></span>
+                          </template>
+                          <div :style="{
+                            width: '158px', height: '65px', backgroundColor: list.lent.payOrNot ? 'rgb(168, 168, 168)' : 'rgb(0, 138, 202)', padding: '10px', borderRadius: '3px',
+                            color: 'white'
+                          }">
+                            <span
+                              v-html="list.lent?.payOrNot ?
+                                `已還款<br />${list.lent.doneDateProcess}還款完成` : `未還款<br />${list.lent.deadLineProcess}前完成還款`">
+                            </span>
+                          </div>
+                        </n-popover>
+
+                        <!-- 欠款 -->
+                        <n-popover trigger="hover" raw :show-arrow="false">
+                          <template #trigger>
+                            <div class="icon-container" v-if="!list.lent.type && Boolean(list.lent.person)">
+                              <p :class="['else', list.lent.payOrNot ? 'done' : 'lentOut']">
+                                欠</p>
+                            </div>
+                            <span v-else></span>
+                          </template>
+                          <div :style="{
+                            width: '158px', height: '65px', backgroundColor: list.lent.payOrNot ? 'rgb(168, 168, 168)' : 'brown', padding: '10px', borderRadius: '3px',
+                            color: 'white'
+                          }">
+                            <span
+                              v-html="list.lent?.payOrNot ?
+                                `已還款<br />${list.lent.doneDateProcess}還款完成` : `未還款<br />${list.lent.deadLineProcess}前完成還款`">
+                            </span>
+                          </div>
+                        </n-popover>
+
+
+                        <!-- 支付方式 -->
+                        <p class="pay" v-for="pay in list.payment">{{ pay }}</p>
+                      </div>
+
+                      <!-- 金額 -->
+                      <p class="num">{{ list.type === '收入' ? '+' : '-' }}{{ Number(list.amount) }}</p>
+                    </div>
+                  </div>
+
+                  <!-- 更多功能 -->
+                  <div @click="toggleMoreFunction(index)" v-if="list.moreFunction" class="moreBtn"></div>
+                  <div v-else class="list">
+                    <n-icon class="function" :component="RemoveRedEyeRound" @click="goToListDetail(index)" />
+                    <n-icon class="function" :component="MergeFilled" @click="listsMerge(index)" />
+                    <n-icon class="function" :component="ContentCopyFilled" @click="listsCopy(index)" />
+                    <n-space>
+                      <n-icon class="function" :component="DeleteFilled" @click="handleConfirm(index)" />
+                    </n-space>
+                    <n-icon class="back" :component="ArrowForwardIosFilled" @click="closeAllFunction(index)" />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+          <img class="nodata" v-else src="./../assets/empty.png">
         </div>
-        <img class="nodata" v-else src="./../assets/empty.png">
       </div>
-    </div>
-    <FooterBar />
+      <FooterBar />
+    </n-dialog-provider>
   </n-message-provider>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { DensityMediumTwotone, ArrowLeftRound, ArrowRightRound, ArrowForwardIosFilled, ContentCopyFilled, DeleteFilled, EditFilled, MergeFilled, RemoveRedEyeRound } from '@vicons/material'
+import { LabelSharp, AttachmentFilled, DensityMediumTwotone, ArrowLeftRound, ArrowRightRound, ArrowForwardIosFilled, ContentCopyFilled, DeleteFilled, EditFilled, MergeFilled, RemoveRedEyeRound } from '@vicons/material'
+import { Slash } from '@vicons/fa'
 import { useAccountingStore } from '@/stores/accountingStore'
 import FooterBar from './../components/FooterBar.vue'
-import { useMessage } from 'naive-ui';
+import { useDialog, useMessage } from 'naive-ui'
+import ListDetail from '@/views/ListDetail.vue'
 
 const router = useRouter()
 const message = useMessage()
+const dialog = useDialog()
 const accountingStore = useAccountingStore()
 const timestamp = ref(Date.now())
 const lists: any = ref([])
@@ -159,9 +271,20 @@ function calculateMonthlyAmount() {
 
 //----------更多功能------------//
 // 删除該列
+function handleConfirm(index: number) {
+  dialog.warning({
+    title: '確認', content: '你確定要刪除該條記賬嗎？', positiveText: '確定', negativeText: '取消',
+    onPositiveClick: () => {
+      listsDelete(index)
+    }
+  })
+}
 function listsDelete(index: number) {
   lists.value.splice(index, 1)
   calculateMonthlyAmount()
+
+  accountingStore.accountingData = lists.value
+  localStorage.setItem('accountingDataList', JSON.stringify(accountingStore.accountingData))
 }
 
 // 複製該列
@@ -189,6 +312,13 @@ function listsMerge(selectedIndex: number) {
   message.warning('請選擇要組合的對象')
 }
 
+function goToListDetail(index: number) {
+  router.push({
+    name: 'ListDetail',
+    params: { id: String(index) }
+  })
+}
+
 // 收回功能表
 function closeAllFunction(index: number) {
   lists.value[index].moreFunction = true
@@ -198,12 +328,35 @@ function closeAllFunction(index: number) {
 // 打開功能表
 function toggleMoreFunction(selectedIndex: number) {
   lists.value.forEach((list: any, index: number) => {
-    if (index !== selectedIndex) {
-      list.moreFunction = true
-    }
+    list.moreFunction = index === selectedIndex ? !list.moreFunction : true
   })
+}
 
-  lists.value[selectedIndex].moreFunction = !lists.value[selectedIndex].moreFunction
+// 將時間戳轉換為年月日
+const processingDate = (num: number) => {
+  const date = new Date(num)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}年${month}月${day}日`
+}
+
+// 將時間戳轉換為月日
+const processingDateWithoutYY = (num: number) => {
+  const date = new Date(num)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${month}月${day}日`
+}
+
+// 將時間戳轉換為時間
+const processingTime = (num: number) => {
+  const date = new Date(num)
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const seconds = String(date.getSeconds()).padStart(2, '0')
+  return `${hours}:${minutes}`
 }
 
 watch(lists, (newValue) => {
@@ -211,7 +364,35 @@ watch(lists, (newValue) => {
 }, { deep: true })
 
 onMounted(() => {
-  lists.value = accountingStore.accountingData || []
+  const savedData = localStorage.getItem('accountingDataList');
+  if (savedData) {
+    accountingStore.accountingData = JSON.parse(savedData);
+  }
+
+  lists.value = accountingStore.accountingData || [];
+
+  lists.value.forEach((item: any) => {
+    // 处理报销日期
+    if (item.reimburse) {
+      if (item.reimburse.deadLine && !isNaN(new Date(item.reimburse.deadLine).getTime())) {
+        item.reimburse.deadLineProcess = processingDateWithoutYY(item.reimburse.deadLine);
+      }
+      if (item.reimburse.doneDate && !isNaN(new Date(item.reimburse.doneDate).getTime())) {
+        item.reimburse.doneDateProcess = processingDateWithoutYY(item.reimburse.doneDate);
+      }
+    }
+
+    // 处理借贷日期
+    if (item.lent) {
+      if (item.lent.deadLine && !isNaN(new Date(item.lent.deadLine).getTime())) {
+        item.lent.deadLineProcess = processingDateWithoutYY(item.lent.deadLine);
+      }
+      if (item.lent.doneDate && !isNaN(new Date(item.lent.doneDate).getTime())) {
+        item.lent.doneDateProcess = processingDateWithoutYY(item.lent.doneDate);
+      }
+    }
+  });
+
   console.log(lists.value)
 
   lists.value.forEach((list: any) => {
@@ -220,7 +401,7 @@ onMounted(() => {
   })
 
   calculateMonthlyAmount()
-})
+});
 
 </script>
 
@@ -434,6 +615,12 @@ onMounted(() => {
                   align-items: center;
                   justify-content: center;
                 }
+
+                >p {
+                  >span {
+                    color: rgb(255, 103, 103);
+                  }
+                }
               }
 
               .number {
@@ -445,10 +632,58 @@ onMounted(() => {
                 .payment {
                   display: flex;
                   flex-direction: row;
-                  gap: 10px;
                   justify-content: flex-end;
+                  align-items: center;
 
-                  >p {
+                  .attachment {
+                    font-size: 18px;
+                    margin-right: 10px;
+                  }
+
+                  .icon-container {
+                    position: relative;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-right: 10px;
+
+                    .else {
+                      color: white;
+                      height: 26px;
+                      width: 26px;
+                      border-radius: 50%;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      cursor: pointer;
+
+                      &.lentOut {
+                        background-color: rgb(165, 0, 0);
+                      }
+
+                      &.reimburse,
+                      &.lentIn {
+                        background-color: rgb(0, 138, 202);
+                      }
+
+                      &.done {
+                        background-color: rgb(168, 168, 168);
+                      }
+                    }
+
+                    .n-icon {
+                      position: absolute;
+                      right: -1px;
+                      top: 0x;
+                      font-size: 26px;
+                      color: gray;
+                    }
+                  }
+
+
+
+                  .pay {
+                    border: none;
                     padding: 1px 5px;
                     border-radius: 3px;
                     background-color: rgb(255, 203, 154);
@@ -498,7 +733,7 @@ onMounted(() => {
                 cursor: pointer;
 
                 &:hover {
-                  background-color: rgb(255, 247, 178);
+                  background-color: #ffd4c9;
                 }
               }
 

@@ -3,23 +3,23 @@
     <div class="background">
       <div class="whichOne">
         <div class="left">
-          <p>報銷</p>
+          <p class="selected">借出</p>
         </div>
-        <n-icon @click="closeReimburseModel()" :component="CloseFilled" />
+        <n-icon @click="closeLentModel()" :component="CloseFilled" />
       </div>
       <div class="reimburseDetail">
         <div class="status">
           <n-space>
-            狀態：<n-switch v-model:value="reimburseOrNot" />已報銷
+            狀態：<n-switch v-model:value="payOrNot" />已還款
           </n-space>
-          <div class="date" v-if="reimburseOrNot === true">
+          <div class="date" v-if="payOrNot === true">
             <p>日期：</p>
             <n-date-picker v-model:value="doneDate" type="date" />
           </div>
         </div>
         <div class="info">
           <div class="inputWrap">
-            <p>報銷對象: </p>
+            <p>借出對象: </p>
             <n-input v-model:value="person" type="text" placeholder="" />
           </div>
           <div class="inputWrap">
@@ -27,34 +27,34 @@
             <n-input v-model:value="contact" type="text" placeholder="" />
           </div>
           <div class="inputWrap">
-            <p>報銷原因: </p>
+            <p>借出備註: </p>
             <n-input v-model:value="detail" type="text" placeholder="" />
           </div>
           <div class="inputWrap">
-            <p>回款賬戶: </p>
+            <p>還款賬戶</p>
             <n-dropdown trigger="click" placement="bottom-start" :options="paymentOptions"
               @select="paymentHandleSelect">
-              <n-button>回款賬戶{{ '：' + account }}<n-icon :component="KeyboardArrowDownOutlined"
+              <n-button>還款賬戶{{ '：' + account }}<n-icon :component="KeyboardArrowDownOutlined"
                   :style="{ paddingLeft: '10px' }" /></n-button>
             </n-dropdown>
           </div>
           <div class="inputWrap">
-            <p>報銷截止日: </p>
+            <p>還款截止日: </p>
             <n-date-picker v-model:value="deadLine" type="date" />
           </div>
           <div class="amountWrap">
-            <p>報銷金額: </p>
-            <n-input v-model:value="amount" type="text" placeholder="" :disabled="reimburseAll" />
+            <p>借出金額: </p>
+            <n-input v-model:value="amount" type="text" placeholder="" :disabled="lentAll" />
             <div class="amount">
-              <p @click="reimburseAll = true" :class="reimburseAll === true ? 'selected' : ''">全額報銷</p>
-              <p @click="reimburseAll = false" :class="reimburseAll === true ? '' : 'selected'">部分報銷</p>
+              <p @click="lentAll = true" :class="lentAll === true ? 'selected' : ''">全額借出</p>
+              <p @click="lentAll = false" :class="lentAll === true ? '' : 'selected'">部分借出</p>
             </div>
           </div>
         </div>
         <div class="confirm">
-          <p @click="commitReimburseInfo">確定</p>
+          <p @click="commitLentInfo">確定</p>
           <p @click="clearAll">重新輸入</p>
-          <p @click="cancelActing">取消報銷</p>
+          <p @click="cancelActing">取消借貸</p>
         </div>
       </div>
     </div>
@@ -62,18 +62,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { CloseFilled, KeyboardArrowDownOutlined } from '@vicons/material'
 import { useMessage } from 'naive-ui';
 
 const message = useMessage()
 
 const props = defineProps({
-  closeReimburseModel: {
+  closeLentModel: {
     type: Function,
     required: true
   },
-  reimburseAmount: {
+  lentAmount: {
     type: Number,
     required: true
   },
@@ -87,18 +87,18 @@ const props = defineProps({
   }
 })
 
-const reimburseOrNot = ref(props.initialData?.reimburseOrNot || false)
+const payOrNot = ref(props.initialData?.payOrNot || false)
 const person = ref(props.initialData?.person || '')
 const contact = ref(props.initialData?.contact || '')
 const detail = ref(props.initialData?.detail || '')
 const account = ref(props.initialData?.account || '')
 const doneDate = ref(props.initialData?.doneDate || Date.now())
 const deadLine = ref(props.initialData?.deadLine || Date.now())
-const amount = ref(props.initialData?.amount || props.reimburseAmount)
-const reimburseAll = ref(props.initialData?.reimburseAll || true)
+const amount = ref(props.initialData?.amount || props.lentAmount)
+const lentAll = ref(props.initialData?.lentAll || true)
 
-if (reimburseAll) {
-  amount.value = props.reimburseAmount
+if (lentAll) {
+  amount.value = props.lentAmount
 }
 
 const paymentOptions = ref([...props.paymentList])
@@ -107,46 +107,49 @@ function paymentHandleSelect(value: string) {
 }
 
 function clearAll() {
-  reimburseOrNot.value = false
+  payOrNot.value = false
   doneDate.value = Date.now()
   person.value = ''
   contact.value = ''
   detail.value = ''
   account.value = ''
+  doneDate.value = Date.now()
   deadLine.value = Date.now()
-  amount.value = props.reimburseAmount
-  reimburseAll.value = true
+  amount.value = props.lentAmount
+  lentAll.value = true
 }
 
 function cancelActing() {
   clearAll()
-  emit('commitReimburse', reimburseInfo.value)
-  props.closeReimburseModel()
+  emit('commitLent', lentInfo.value)
+  props.closeLentModel()
 }
 
-const reimburseInfo = computed(() => ({
+const lentInfo = computed(() => ({
+  type: true,
   person: person.value,
   contact: contact.value,
   detail: detail.value,
   amount: amount.value,
-  reimburseAll: reimburseAll.value ? '全部報銷' : '部分報銷',
   account: account.value,
-  reimburseOrNot: reimburseOrNot.value,
+  lentAll: lentAll.value ? '全部借款' : '部分借款',
+  payOrNot: payOrNot.value,
   doneDate: doneDate.value,
   deadLine: deadLine.value,
   doneDateProcess: doneDate.value,
   deadLineProcess: deadLine.value
 }))
 
-const emit = defineEmits(['commitReimburse'])
+const emit = defineEmits(['commitLent'])
 
-function commitReimburseInfo() {
+
+function commitLentInfo() {
   if (person.value === '' || account.value === '') {
     message.warning('報銷對象及回款方式為必填')
     return
   }
-  emit('commitReimburse', reimburseInfo.value)
-  props.closeReimburseModel()
+  emit('commitLent', lentInfo.value)
+  props.closeLentModel()
 }
 
 onMounted(() => {
@@ -190,8 +193,12 @@ onMounted(() => {
         gap: 15px;
 
         >p {
-          color: rgb(255, 103, 103);
-          border-bottom: 2px solid rgb(255, 103, 103);
+          cursor: pointer;
+
+          &.selected {
+            color: rgb(255, 103, 103);
+            border-bottom: 2px solid rgb(255, 103, 103);
+          }
         }
       }
 
